@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spire Pull Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF0F2;
+    --paper-raised:#F8F9FA;
+    --ink:#202634;
+    --ink-soft:#5B6472;
+    --line:#D6D9DC;
+    --indigo:#3A4CA6;
+    --indigo-dark:#2C3A85;
+    --ember:#C1633B;
+    --ember-soft:#F1DFD4;
+    --teal:#3E8E93;
+    --teal-soft:#D8E9EA;
+    --gray-tier:#8B93A1;
+    --gray-tier-soft:#E4E6E9;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--indigo); color:#fff;}
+  a{color:var(--indigo);}
+  :focus-visible{outline:2px solid var(--indigo); outline-offset:2px;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:40px 24px 80px;}
+
+  header.page-head{margin-bottom:36px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin-bottom:10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(28px,4vw,42px);
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--ink-soft);
+    max-width:640px;
+    font-size:15px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px;
+  }
+  .panel + .panel{margin-top:24px;}
+
+  .panel h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:18px;
+    margin:0 0 4px;
+  }
+  .panel .panel-note{
+    font-size:13px; color:var(--ink-soft); margin:0 0 16px;
+  }
+
+  /* Character list */
+  .char-toolbar{
+    display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  button{
+    font-family:'Inter',sans-serif;
+    font-size:13px; font-weight:500;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    padding:8px 13px;
+    cursor:pointer;
+    transition:background .12s ease, border-color .12s ease, transform .05s ease;
+  }
+  button:hover{border-color:var(--indigo); color:var(--indigo);}
+  button:active{transform:translateY(1px);}
+  button.primary{
+    background:var(--indigo); border-color:var(--indigo); color:#fff;
+  }
+  button.primary:hover{background:var(--indigo-dark); color:#fff;}
+  button.primary:disabled{
+    background:#B7BEDA; border-color:#B7BEDA; cursor:not-allowed;
+  }
+  button.ghost{background:transparent;}
+
+  .char-list{
+    max-height:420px;
+    overflow-y:auto;
+    padding-right:4px;
+    margin:0 -4px;
+  }
+  .char-row{
+    display:grid;
+    grid-template-columns:20px 1fr 52px;
+    align-items:center;
+    gap:8px;
+    padding:7px 4px;
+    border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  .char-row:last-child{border-bottom:none;}
+  .tier-dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--gray-tier);
+  }
+  .tier-dot.legendary{background:var(--ember);}
+  .tier-dot.epic{background:#8B5FBF;}
+  .tier-dot.rare{background:var(--teal);}
+  .char-name{
+    border:none; background:transparent; color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+    padding:4px 2px; border-radius:4px; width:100%;
+  }
+  .char-name:focus-visible{outline:2px solid var(--indigo);}
+  .char-pct{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:right;
+  }
+
+  .legend{
+    display:flex; gap:16px; margin-top:14px; font-size:12px; color:var(--ink-soft);
+    flex-wrap:wrap;
+  }
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px;height:9px;border-radius:50%;}
+
+  /* Rarity rate panel */
+  .rate-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .rate-field{
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:#fff;
+    padding:9px 10px;
+  }
+  .rate-field label{
+    display:block;
+    font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;
+    margin-bottom:5px;
+  }
+  .rate-field.legendary label{color:var(--ember);}
+  .rate-field.epic label{color:#8B5FBF;}
+  .rate-field.rare label{color:var(--teal);}
+  .rate-field.common label{color:var(--gray-tier);}
+  .rate-input-wrap{display:flex; align-items:center; gap:2px;}
+  .rate-input-wrap input{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px; font-weight:600;
+    border:none; background:transparent; color:var(--ink);
+    width:100%; padding:0;
+  }
+  .rate-input-wrap span{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft);
+  }
+  .rate-total{
+    font-size:12px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:16px;
+  }
+  .rate-total.off{color:var(--ember); font-weight:600;}
+
+  /* Tape */
+  .tape-shell{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px;
+    overflow-x:auto;
+    white-space:nowrap;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .tape-empty{color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:6px 10px;
+    border-radius:5px;
+    background:var(--gray-tier-soft);
+    color:var(--ink);
+    border:1px solid transparent;
+    flex:none;
+    animation:pop .18s ease;
+  }
+  .chip.legendary{background:var(--ember-soft); border-color:var(--ember);}
+  .chip.rare{background:var(--teal-soft); border-color:var(--teal);}
+  @keyframes pop{
+    from{transform:scale(.85); opacity:0;}
+    to{transform:scale(1); opacity:1;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .chip{animation:none;}
+  }
+
+  .run-controls{
+    display:flex; gap:8px; align-items:center; margin:16px 0 10px; flex-wrap:wrap;
+  }
+  .status-line{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px; color:var(--ink-soft);
+    display:flex; gap:18px; flex-wrap:wrap;
+  }
+  .status-line strong{color:var(--ink); font-weight:600;}
+  .status-line .done{color:var(--indigo); font-weight:600;}
+
+  /* Batch */
+  .batch-controls{
+    display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px;
+  }
+  .field{display:flex; flex-direction:column; gap:5px;}
+  .field label{
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;
+  }
+  .field input[type=number]{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    width:120px;
+    background:#fff;
+  }
+
+  .stat-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+    gap:12px;
+    margin:18px 0;
+  }
+  .stat-card{
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:8px;
+    padding:12px 14px;
+  }
+  .stat-card .label{
+    font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;
+    margin-bottom:4px;
+  }
+  .stat-card .value{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:20px; font-weight:600;
+  }
+  .stat-card.accent .value{color:var(--indigo);}
+
+  /* Spread number line */
+  .spread-wrap{margin:22px 0 8px;}
+  .spread-title{
+    font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em;
+    font-family:'IBM Plex Mono',monospace; margin-bottom:60px;
+  }
+  .spread-line{
+    position:relative;
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+    margin:0 6px;
+  }
+  .spread-marker{
+    position:absolute;
+    top:50%;
+    left:0;
+    transform:translate(-50%,-50%);
+    width:11px; height:11px;
+    border-radius:50%;
+    background:var(--indigo);
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--indigo);
+  }
+  .spread-marker.p50{background:var(--ember); box-shadow:0 0 0 1px var(--ember); width:14px; height:14px;}
+  .spread-label{
+    position:absolute;
+    top:-48px;
+    left:50%;
+    transform:translateX(-50%);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    text-align:center;
+    white-space:nowrap;
+    color:var(--ink-soft);
+  }
+  .spread-label .pct{display:block; font-size:10px; opacity:.7;}
+  .spread-label .val{display:block; font-weight:600; color:var(--ink); font-size:12px;}
+
+  /* Histogram */
+  .hist-wrap{margin-top:34px;}
+  .hist-bars{
+    display:flex;
+    align-items:flex-end;
+    gap:2px;
+    height:150px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .hist-bar{
+    flex:1;
+    background:var(--indigo);
+    opacity:.75;
+    border-radius:2px 2px 0 0;
+    min-height:1px;
+    transition:height .25s ease, opacity .12s ease;
+    cursor:pointer;
+  }
+  .hist-bar:hover{opacity:1;}
+  .hist-bars{position:relative;}
+  .hist-tooltip{
+    position:absolute;
+    background:var(--ink);
+    color:#fff;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:6px 10px;
+    border-radius:6px;
+    white-space:nowrap;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .1s ease;
+    z-index:5;
+  }
+  .hist-tooltip.visible{opacity:1;}
+  .hist-tooltip::after{
+    content:'';
+    position:absolute;
+    top:100%;
+    left:50%;
+    transform:translateX(-50%);
+    border:5px solid transparent;
+    border-top-color:var(--ink);
+  }
+  .hist-axis{
+    display:flex; justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; color:var(--ink-soft);
+    margin-top:6px;
+  }
+
+  .placeholder-note{
+    font-size:13px; color:var(--ink-soft); font-style:italic;
+    padding:20px 0;
+  }
+
+  footer.foot{
+    margin-top:48px;
+    font-size:12px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--line);
+    padding-top:16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <div class="eyebrow">Spire of Ascension &middot; drop-rate lab</div>
+    <h1>Pull Simulator</h1>
+    <p class="sub">Model how long it takes to collect all 24 characters under a given set of pull weights &mdash; one pull at a time, or across thousands of trials to see the average, median, and spread.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: character config -->
+    <div class="panel">
+      <h2>Rarity rates</h2>
+      <p class="panel-note">Set the overall pull rate per rarity. Each character within a rarity splits that rate evenly.</p>
+
+      <div class="rate-row">
+        <div class="rate-field common">
+          <label for="rate-common">Common</label>
+          <div class="rate-input-wrap"><input type="number" id="rate-common" min="0" step="0.1" value="60"><span>%</span></div>
+        </div>
+        <div class="rate-field rare">
+          <label for="rate-rare">Rare</label>
+          <div class="rate-input-wrap"><input type="number" id="rate-rare" min="0" step="0.1" value="29"><span>%</span></div>
+        </div>
+        <div class="rate-field epic">
+          <label for="rate-epic">Epic</label>
+          <div class="rate-input-wrap"><input type="number" id="rate-epic" min="0" step="0.1" value="10"><span>%</span></div>
+        </div>
+        <div class="rate-field legendary">
+          <label for="rate-legendary">Legendary</label>
+          <div class="rate-input-wrap"><input type="number" id="rate-legendary" min="0" step="0.1" value="1"><span>%</span></div>
+        </div>
+      </div>
+
+      <div class="rate-total" id="rate-total">
+        <span id="rate-total-text">Total: 100%</span>
+        <button id="btn-reset-rates" class="ghost">Reset to default</button>
+      </div>
+
+      <h2 style="margin-top:20px;">Characters</h2>
+      <p class="panel-note">Rename freely — rarity and split-weight are handled above.</p>
+      <div class="char-list" id="char-list"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--ember)"></span>Legendary</span>
+        <span><span class="dot" style="background:#8B5FBF"></span>Epic</span>
+        <span><span class="dot" style="background:var(--teal)"></span>Rare</span>
+        <span><span class="dot" style="background:var(--gray-tier)"></span>Common</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: batch -->
+    <div>
+      <div class="panel">
+        <h2>Batch trials</h2>
+        <p class="panel-note">Simulate many independent collectors to see how draws-to-complete are distributed.</p>
+
+        <div class="batch-controls">
+          <div class="field">
+            <label for="trial-count">Trials</label>
+            <input type="number" id="trial-count" value="2000" min="1" max="50000" step="1">
+          </div>
+          <button id="btn-run-batch" class="primary">Run trials</button>
+          <span id="batch-status" style="font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;"></span>
+        </div>
+
+        <div id="batch-results">
+          <p class="placeholder-note">Run a batch to see mean, median, and percentile spread here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // ---------- Character data ----------
+  const TIER_LABELS = {
+    common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary'
+  };
+  const DEFAULT_RATES = { common: 60, rare: 29, epic: 10, legendary: 1 };
+
+  const DEFAULT_CHARACTERS = [
+    { name: 'Scatterpus',   tier: 'common' },
+    { name: 'Jetti',        tier: 'common' },
+    { name: 'Grogre',       tier: 'common' },
+    { name: 'Chomble',      tier: 'common' },
+    { name: 'Pinbro',       tier: 'common' },
+    { name: 'Elphie',       tier: 'common' },
+    { name: 'Rockflock',    tier: 'common' },
+    { name: 'Chick-A-Boom', tier: 'common' },
+    { name: 'Ooo-Loo',      tier: 'common' },
+    { name: 'Chanjo',       tier: 'common' },
+    { name: 'Glo-Bro',      tier: 'common' },
+    { name: 'Hornorang',    tier: 'common' },
+    { name: 'Lennisaur',    tier: 'rare' },
+    { name: 'Grizz-Grizz',  tier: 'rare' },
+    { name: 'Lilibud',      tier: 'rare' },
+    { name: 'Triceraclops', tier: 'rare' },
+    { name: 'Serpie',       tier: 'rare' },
+    { name: 'Flinkerflump', tier: 'rare' },
+    { name: 'Mouthster',    tier: 'epic' },
+    { name: 'Konjuri',      tier: 'epic' },
+    { name: 'Cycroc',       tier: 'epic' },
+    { name: 'Bizken',       tier: 'epic' },
+    { name: 'Hoodon',       tier: 'legendary' },
+    { name: 'Drazzle',      tier: 'legendary' },
+  ];
+
+  let characters = DEFAULT_CHARACTERS.map((c, i) => ({
+    id: i,
+    name: c.name,
+    tier: c.tier
+  }));
+
+  let rarityRates = { ...DEFAULT_RATES };
+
+  const tierCounts = characters.reduce((acc, c) => {
+    acc[c.tier] = (acc[c.tier] || 0) + 1;
+    return acc;
+  }, {});
+
+  function characterWeight(c) {
+    const rate = parseFloat(rarityRates[c.tier]) || 0;
+    const count = tierCounts[c.tier] || 1;
+    return rate / count;
+  }
+
+  // ---------- Rarity rate controls ----------
+  const rateInputs = {
+    common: document.getElementById('rate-common'),
+    rare: document.getElementById('rate-rare'),
+    epic: document.getElementById('rate-epic'),
+    legendary: document.getElementById('rate-legendary'),
+  };
+  const rateTotalText = document.getElementById('rate-total-text');
+  const rateTotalEl = document.getElementById('rate-total');
+
+  function updateRateTotal() {
+    const total = Object.values(rarityRates).reduce((s,v) => s + (parseFloat(v) || 0), 0);
+    rateTotalText.textContent = 'Total: ' + total.toFixed(1) + '%';
+    rateTotalEl.classList.toggle('off', Math.abs(total - 100) > 0.05);
+  }
+
+  Object.keys(rateInputs).forEach(tier => {
+    rateInputs[tier].addEventListener('input', e => {
+      rarityRates[tier] = parseFloat(e.target.value) || 0;
+      updateRateTotal();
+      updatePercentages();
+    });
+  });
+
+  document.getElementById('btn-reset-rates').addEventListener('click', () => {
+    rarityRates = { ...DEFAULT_RATES };
+    Object.keys(rateInputs).forEach(tier => rateInputs[tier].value = rarityRates[tier]);
+    updateRateTotal();
+    updatePercentages();
+  });
+
+  updateRateTotal();
+
+  // ---------- Render character list ----------
+  const listEl = document.getElementById('char-list');
+
+  function renderList() {
+    listEl.innerHTML = '';
+    characters.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'char-row';
+
+      const dot = document.createElement('div');
+      dot.className = 'tier-dot ' + c.tier;
+      dot.title = TIER_LABELS[c.tier];
+
+      const nameInput = document.createElement('input');
+      nameInput.className = 'char-name';
+      nameInput.value = c.name;
+      nameInput.setAttribute('aria-label', 'Character name');
+      nameInput.addEventListener('input', e => { c.name = e.target.value; });
+
+      const pct = document.createElement('div');
+      pct.className = 'char-pct';
+      pct.dataset.pctFor = c.id;
+
+      row.appendChild(dot);
+      row.appendChild(nameInput);
+      row.appendChild(pct);
+      listEl.appendChild(row);
+    });
+    updatePercentages();
+  }
+
+  function updatePercentages() {
+    const total = characters.reduce((s,c) => s + characterWeight(c), 0);
+    document.querySelectorAll('.char-pct').forEach(el => {
+      const c = characters.find(ch => ch.id == el.dataset.pctFor);
+      const w = characterWeight(c);
+      el.textContent = total > 0 ? ((w/total)*100).toFixed(2) + '%' : '—';
+    });
+  }
+
+  renderList();
+
+  // ---------- Weighted pick helper ----------
+  function buildCumulative(chars) {
+    let running = 0;
+    const cum = [];
+    chars.forEach(c => {
+      running += characterWeight(c);
+      cum.push(running);
+    });
+    return { cum, total: running };
+  }
+
+  function pickIndex(cum, total) {
+    const r = Math.random() * total;
+    // linear scan is fine at n=24
+    for (let i = 0; i < cum.length; i++) {
+      if (r < cum[i]) return i;
+    }
+    return cum.length - 1;
+  }
+
+  // ---------- Batch trials ----------
+  const trialCountInput = document.getElementById('trial-count');
+  const btnRunBatch = document.getElementById('btn-run-batch');
+  const batchStatus = document.getElementById('batch-status');
+  const batchResults = document.getElementById('batch-results');
+
+  function simulateOneCompletion(cum, total, n) {
+    const flags = new Uint8Array(n);
+    let collected = 0;
+    let draws = 0;
+    while (collected < n) {
+      draws++;
+      const idx = pickIndex(cum, total);
+      if (!flags[idx]) { flags[idx] = 1; collected++; }
+    }
+    return draws;
+  }
+
+  function percentile(sortedArr, p) {
+    // nearest-rank method
+    const idx = Math.min(sortedArr.length - 1, Math.max(0, Math.ceil((p/100) * sortedArr.length) - 1));
+    return sortedArr[idx];
+  }
+
+  function mean(arr) {
+    return arr.reduce((a,b) => a+b, 0) / arr.length;
+  }
+
+  function runBatch() {
+    const built = buildCumulative(characters);
+    if (built.total <= 0) {
+      batchResults.innerHTML = '<p class="placeholder-note">Set at least one character weight above 0 first.</p>';
+      return;
+    }
+    let trials = parseInt(trialCountInput.value, 10);
+    if (!trials || trials < 1) trials = 1;
+    if (trials > 50000) trials = 50000;
+    trialCountInput.value = trials;
+
+    btnRunBatch.disabled = true;
+    batchStatus.textContent = 'running ' + trials.toLocaleString() + ' trials…';
+
+    // slight timeout so the button/status repaint before the sync-heavy loop
+    setTimeout(() => {
+      const n = characters.length;
+      const results = new Array(trials);
+      for (let t = 0; t < trials; t++) {
+        results[t] = simulateOneCompletion(built.cum, built.total, n);
+      }
+      results.sort((a,b) => a-b);
+
+      const m = mean(results);
+      const med = percentile(results, 50);
+      const p10 = percentile(results, 10);
+      const p25 = percentile(results, 25);
+      const p75 = percentile(results, 75);
+      const p90 = percentile(results, 90);
+      const min = results[0];
+      const max = results[results.length-1];
+
+      renderBatchResults({ trials, m, med, p10, p25, p75, p90, min, max, results });
+
+      batchStatus.textContent = 'done — ' + trials.toLocaleString() + ' trials';
+      btnRunBatch.disabled = false;
+    }, 20);
+  }
+
+  function renderBatchResults(r) {
+    batchResults.innerHTML = '';
+
+    // stat cards
+    const statRow = document.createElement('div');
+    statRow.className = 'stat-row';
+    const cards = [
+      { label: 'Mean', value: r.m.toFixed(1) },
+      { label: 'Median', value: r.med.toFixed(0), accent: true },
+      { label: 'Min', value: r.min },
+      { label: 'Max', value: r.max },
+    ];
+    cards.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'stat-card' + (c.accent ? ' accent' : '');
+      card.innerHTML = '<div class="label">' + c.label + '</div><div class="value">' + c.value + '</div>';
+      statRow.appendChild(card);
+    });
+    batchResults.appendChild(statRow);
+
+    // spread number line
+    const spreadWrap = document.createElement('div');
+    spreadWrap.className = 'spread-wrap';
+    const spreadTitle = document.createElement('div');
+    spreadTitle.className = 'spread-title';
+    spreadTitle.textContent = 'Spread — draws needed to complete the set';
+    spreadWrap.appendChild(spreadTitle);
+
+    const line = document.createElement('div');
+    line.className = 'spread-line';
+    const points = [
+      { p: 10, v: r.p10 },
+      { p: 25, v: r.p25 },
+      { p: 50, v: r.med },
+      { p: 75, v: r.p75 },
+      { p: 90, v: r.p90 },
+    ];
+    const range = Math.max(1, r.max - r.min);
+    points.forEach(pt => {
+      const frac = (pt.v - r.min) / range;
+      const marker = document.createElement('div');
+      marker.className = 'spread-marker' + (pt.p === 50 ? ' p50' : '');
+      marker.style.left = (frac*100) + '%';
+      const label = document.createElement('div');
+      label.className = 'spread-label';
+      label.style.left = (frac*100) + '%';
+      label.innerHTML = '<span class="pct">p' + pt.p + '</span><span class="val">' + pt.v + '</span>';
+      marker.appendChild(label);
+      line.appendChild(marker);
+    });
+    spreadWrap.appendChild(line);
+    batchResults.appendChild(spreadWrap);
+
+    // histogram
+    const histWrap = document.createElement('div');
+    histWrap.className = 'hist-wrap';
+    const histTitle = document.createElement('div');
+    histTitle.className = 'spread-title';
+    histTitle.textContent = 'Distribution of trials-to-completion';
+    histWrap.appendChild(histTitle);
+
+    const bars = document.createElement('div');
+    bars.className = 'hist-bars';
+    const binCount = 28;
+    const binWidth = Math.max(1, (r.max - r.min) / binCount);
+    const freq = new Array(binCount).fill(0);
+    r.results.forEach(v => {
+      let idx = Math.floor((v - r.min) / binWidth);
+      if (idx >= binCount) idx = binCount - 1;
+      if (idx < 0) idx = 0;
+      freq[idx]++;
+    });
+    const maxFreq = Math.max(...freq, 1);
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'hist-tooltip';
+    bars.appendChild(tooltip);
+
+    freq.forEach((f, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'hist-bar';
+      bar.style.height = Math.max(1, (f / maxFreq) * 100) + '%';
+      const binStart = Math.round(r.min + i * binWidth);
+      const binEnd = Math.round(r.min + (i + 1) * binWidth);
+      bar.addEventListener('mouseenter', () => {
+        tooltip.textContent = binStart + '–' + binEnd + ' draws · ' + f + (f === 1 ? ' trial' : ' trials');
+        tooltip.style.left = (bar.offsetLeft + bar.offsetWidth / 2) + 'px';
+        tooltip.style.top = (bar.offsetTop - 10) + 'px';
+        tooltip.style.transform = 'translate(-50%, -100%)';
+        tooltip.classList.add('visible');
+      });
+      bar.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('visible');
+      });
+      bars.appendChild(bar);
+    });
+    histWrap.appendChild(bars);
+
+    const axis = document.createElement('div');
+    axis.className = 'hist-axis';
+    axis.innerHTML = '<span>' + r.min + ' draws</span><span>' + r.max + ' draws</span>';
+    histWrap.appendChild(axis);
+
+    batchResults.appendChild(histWrap);
+  }
+
+  btnRunBatch.addEventListener('click', runBatch);
+
+})();
+</script>
+
+</body>
+</html>
