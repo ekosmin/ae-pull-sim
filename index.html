@@ -194,51 +194,95 @@
   }
   .rate-total.off{color:var(--ember); font-weight:600;}
 
-  /* Tape */
-  .tape-shell{
+  /* Single pulls */
+  .last-pull{
     background:#fff;
     border:1px solid var(--line);
     border-radius:8px;
-    padding:14px;
-    overflow-x:auto;
-    white-space:nowrap;
+    padding:16px;
     min-height:64px;
     display:flex;
     align-items:center;
-    gap:6px;
+    flex-wrap:wrap;
+    gap:10px;
   }
-  .tape-empty{color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace;}
-  .chip{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    padding:6px 10px;
-    border-radius:5px;
-    background:var(--gray-tier-soft);
-    color:var(--ink);
-    border:1px solid transparent;
-    flex:none;
+  .last-pull-empty{color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace;}
+  .pull-result-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 12px;
     animation:pop .18s ease;
   }
-  .chip.legendary{background:var(--ember-soft); border-color:var(--ember);}
-  .chip.rare{background:var(--teal-soft); border-color:var(--teal);}
+  .pull-result-chip .name{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:16px;
+  }
+  .tier-badge{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:4px 10px;
+    border-radius:20px;
+    background:var(--gray-tier-soft);
+    color:var(--ink-soft);
+  }
+  .tier-badge.legendary{background:var(--ember-soft); color:var(--ember);}
+  .tier-badge.epic{background:#EAE1F5; color:#8B5FBF;}
+  .tier-badge.rare{background:var(--teal-soft); color:var(--teal);}
   @keyframes pop{
     from{transform:scale(.85); opacity:0;}
     to{transform:scale(1); opacity:1;}
   }
   @media (prefers-reduced-motion:reduce){
-    .chip{animation:none;}
+    .pull-result-chip{animation:none;}
   }
 
-  .run-controls{
-    display:flex; gap:8px; align-items:center; margin:16px 0 10px; flex-wrap:wrap;
-  }
-  .status-line{
+  .pull-group{margin-top:20px;}
+  .pull-group-head{
+    display:flex; justify-content:space-between; align-items:baseline;
     font-family:'IBM Plex Mono',monospace;
-    font-size:13px; color:var(--ink-soft);
-    display:flex; gap:18px; flex-wrap:wrap;
+    font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft);
+    padding-bottom:6px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:2px;
   }
-  .status-line strong{color:var(--ink); font-weight:600;}
-  .status-line .done{color:var(--indigo); font-weight:600;}
+  .pull-group-head strong{color:var(--ink);}
+  .pull-row{
+    display:grid;
+    grid-template-columns:20px 1fr 40px;
+    align-items:center;
+    gap:8px;
+    padding:6px 2px;
+    border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  .pull-row:last-child{border-bottom:none;}
+  .pull-row.zero .pull-name{color:var(--ink-soft);}
+  .pull-name{font-weight:500;}
+  .pull-count{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px; font-weight:600;
+    text-align:right;
+  }
+  .pull-row.zero .pull-count{color:var(--ink-soft); font-weight:400;}
+
+  .run-controls{
+    display:flex; gap:8px; align-items:center; margin:0 0 16px; flex-wrap:wrap;
+  }
+  .pull-total{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-left:4px;
+  }
+  .pull-total strong{color:var(--ink); font-weight:600;}
 
   /* Batch */
   .batch-controls{
@@ -391,7 +435,7 @@
 <div class="wrap">
 
   <header class="page-head">
-    <div class="eyebrow">Spire of Ascension &middot; drop-rate lab</div>
+    <div class="eyebrow">Drop-rate lab</div>
     <h1>Pull Simulator</h1>
     <p class="sub">Model how long it takes to collect all 24 characters under a given set of pull weights &mdash; one pull at a time, or across thousands of trials to see the average, median, and spread.</p>
   </header>
@@ -401,7 +445,7 @@
     <!-- LEFT: character config -->
     <div class="panel">
       <h2>Rarity rates</h2>
-      <p class="panel-note">Set the overall pull rate per rarity. Each character within a rarity splits that rate evenly.</p>
+      <p class="panel-note">Set the overall pull rate per rarity. Each character within a rarity splits that rate evenly. These rates drive both the single pulls and batch trials below.</p>
 
       <div class="rate-row">
         <div class="rate-field common">
@@ -438,8 +482,28 @@
       </div>
     </div>
 
-    <!-- RIGHT: batch -->
+    <!-- RIGHT: single pulls + batch -->
     <div>
+      <div class="panel">
+        <h2>Single pulls</h2>
+        <p class="panel-note">Pull one aerthling at a time and watch your collection fill in.</p>
+
+        <div class="run-controls">
+          <button id="btn-pull-one" class="primary">Pull one</button>
+          <button id="btn-pull-five" class="primary">Pull five</button>
+          <button id="btn-reset-pulls" class="ghost">Reset</button>
+          <span class="pull-total" id="pull-total">Total pulls: 0</span>
+        </div>
+
+        <div class="last-pull" id="last-pull">
+          <span class="last-pull-empty">no pulls yet &mdash; press "Pull one" to begin</span>
+        </div>
+
+        <div class="stat-row" id="completion-stats" style="margin-top:18px;"></div>
+
+        <div id="pull-groups"></div>
+      </div>
+
       <div class="panel">
         <h2>Batch trials</h2>
         <p class="panel-note">Simulate many independent collectors to see how draws-to-complete are distributed.</p>
@@ -611,11 +675,153 @@
     return cum.length - 1;
   }
 
+  // ---------- Single pulls ----------
+  let pullCounts = characters.map(() => 0);
+  let totalPulls = 0;
+
+  const lastPullEl = document.getElementById('last-pull');
+  const completionStatsEl = document.getElementById('completion-stats');
+  const pullGroupsEl = document.getElementById('pull-groups');
+  const pullTotalEl = document.getElementById('pull-total');
+  const TIER_ORDER = ['common', 'rare', 'epic', 'legendary'];
+
+  function pullOne() {
+    const built = buildCumulative(characters);
+    if (built.total <= 0) return null;
+    const idx = pickIndex(built.cum, built.total);
+    pullCounts[idx]++;
+    totalPulls++;
+    return idx;
+  }
+
+  function pullOneAndRender() {
+    const idx = pullOne();
+    if (idx === null) return;
+    renderLastPull([idx]);
+    renderCompletionStats();
+    renderPullGroups();
+    renderPullTotal();
+  }
+
+  function pullManyAndRender(n) {
+    const indices = [];
+    for (let i = 0; i < n; i++) {
+      const result = pullOne();
+      if (result === null) break;
+      indices.push(result);
+    }
+    if (indices.length === 0) return;
+    renderLastPull(indices);
+    renderCompletionStats();
+    renderPullGroups();
+    renderPullTotal();
+  }
+
+  function renderPullTotal() {
+    pullTotalEl.innerHTML = 'Total pulls: <strong>' + totalPulls + '</strong>';
+  }
+
+  function renderLastPull(indices) {
+    lastPullEl.innerHTML = '';
+    indices.forEach(idx => {
+      const c = characters[idx];
+      const chip = document.createElement('div');
+      chip.className = 'pull-result-chip';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = c.name;
+      const badge = document.createElement('span');
+      badge.className = 'tier-badge ' + c.tier;
+      badge.textContent = TIER_LABELS[c.tier];
+      chip.appendChild(name);
+      chip.appendChild(badge);
+      lastPullEl.appendChild(chip);
+    });
+  }
+
+  function renderCompletionStats() {
+    completionStatsEl.innerHTML = '';
+    const rows = TIER_ORDER.map(tier => {
+      const chars = characters.filter(c => c.tier === tier);
+      const collected = chars.filter(c => pullCounts[c.id] > 0).length;
+      return { label: TIER_LABELS[tier], collected, total: chars.length };
+    });
+    const totalCollected = characters.filter(c => pullCounts[c.id] > 0).length;
+    rows.push({ label: 'Overall', collected: totalCollected, total: characters.length, accent: true });
+
+    rows.forEach(r => {
+      const pct = r.total > 0 ? (r.collected / r.total) * 100 : 0;
+      const card = document.createElement('div');
+      card.className = 'stat-card' + (r.accent ? ' accent' : '');
+      card.innerHTML = '<div class="label">' + r.label + '</div>' +
+        '<div class="value">' + pct.toFixed(0) + '%</div>' +
+        '<div style="font-size:11px; color:var(--ink-soft); font-family:\'IBM Plex Mono\',monospace; margin-top:2px;">' + r.collected + ' / ' + r.total + '</div>';
+      completionStatsEl.appendChild(card);
+    });
+  }
+
+  function renderPullGroups() {
+    pullGroupsEl.innerHTML = '';
+    TIER_ORDER.forEach(tier => {
+      const chars = characters.filter(c => c.tier === tier);
+      const collected = chars.filter(c => pullCounts[c.id] > 0).length;
+
+      const group = document.createElement('div');
+      group.className = 'pull-group';
+
+      const head = document.createElement('div');
+      head.className = 'pull-group-head';
+      head.innerHTML = '<span>' + TIER_LABELS[tier] + '</span><strong>' + collected + ' / ' + chars.length + '</strong>';
+      group.appendChild(head);
+
+      chars.forEach(c => {
+        const count = pullCounts[c.id];
+        const row = document.createElement('div');
+        row.className = 'pull-row' + (count === 0 ? ' zero' : '');
+
+        const dot = document.createElement('div');
+        dot.className = 'tier-dot ' + c.tier;
+
+        const name = document.createElement('div');
+        name.className = 'pull-name';
+        name.textContent = c.name;
+
+        const countEl = document.createElement('div');
+        countEl.className = 'pull-count';
+        countEl.textContent = count;
+
+        row.appendChild(dot);
+        row.appendChild(name);
+        row.appendChild(countEl);
+        group.appendChild(row);
+      });
+
+      pullGroupsEl.appendChild(group);
+    });
+  }
+
+  document.getElementById('btn-pull-one').addEventListener('click', pullOneAndRender);
+  document.getElementById('btn-pull-five').addEventListener('click', () => pullManyAndRender(5));
+  document.getElementById('btn-reset-pulls').addEventListener('click', () => {
+    pullCounts = characters.map(() => 0);
+    totalPulls = 0;
+    lastPullEl.innerHTML = '<span class="last-pull-empty">no pulls yet &mdash; press "Pull one" to begin</span>';
+    renderCompletionStats();
+    renderPullGroups();
+    renderPullTotal();
+  });
+
+  renderCompletionStats();
+  renderPullGroups();
+  renderPullTotal();
+
   // ---------- Batch trials ----------
   const trialCountInput = document.getElementById('trial-count');
   const btnRunBatch = document.getElementById('btn-run-batch');
   const batchStatus = document.getElementById('batch-status');
   const batchResults = document.getElementById('batch-results');
+
+  const MAX_DRAWS_PER_TRIAL = 2000000;
 
   function simulateOneCompletion(cum, total, n) {
     const flags = new Uint8Array(n);
@@ -623,6 +829,7 @@
     let draws = 0;
     while (collected < n) {
       draws++;
+      if (draws > MAX_DRAWS_PER_TRIAL) return draws; // safety net — should be unreachable given the pre-run check
       const idx = pickIndex(cum, total);
       if (!flags[idx]) { flags[idx] = 1; collected++; }
     }
@@ -643,6 +850,15 @@
     const built = buildCumulative(characters);
     if (built.total <= 0) {
       batchResults.innerHTML = '<p class="placeholder-note">Set at least one character weight above 0 first.</p>';
+      return;
+    }
+    const zeroWeightChars = characters.filter(c => characterWeight(c) <= 0);
+    if (zeroWeightChars.length > 0) {
+      const names = zeroWeightChars.map(c => c.name).join(', ');
+      batchResults.innerHTML = '<p class="placeholder-note">' + zeroWeightChars.length +
+        (zeroWeightChars.length === 1 ? ' aerthling has' : ' aerthlings have') +
+        ' a 0% pull rate right now (' + names + '), so the full set can never be completed. ' +
+        'Give every rarity a rate above 0% before running a batch.</p>';
       return;
     }
     let trials = parseInt(trialCountInput.value, 10);
